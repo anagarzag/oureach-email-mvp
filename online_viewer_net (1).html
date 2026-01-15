@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Gmail — NEA Outreach Email Agent (Mock)</title>
+  <style>
+    /* ===== Gmail-like tokens ===== */
+    :root{
+      --bg:#f6f8fc;            /* Gmail app background */
+      --surface:#ffffff;       /* cards/panels */
+      --text:#202124;
+      --muted:#5f6368;
+      --muted2:#80868b;
+      --border:#e0e3eb;
+      --hover:#f2f6fc;
+      --selected:#d2e3fc;
+      --chip:#e8f0fe;
+      --blue:#1a73e8;
+      --compose:#c2e7ff;
+      --danger:#d93025;
+      --shadow:0 1px 2px rgba(0,0,0,.08), 0 2px 8px rgba(0,0,0,.06);
+
+      --radius:16px;
+      --radiusSm:10px;
+
+      --sans: Roboto, ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:var(--sans);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* ===== Small icon system (inline SVG) ===== */
+    .i{width:20px;height:20px;display:inline-block;vertical-align:middle;fill:currentColor}
+    .iconBtn{
+      width:40px;height:40px;border-radius:999px;
+      border:none;background:transparent;cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;
+      color:var(--muted);
+    }
+    .iconBtn:hover{background:rgba(60,64,67,.08)}
+    .iconBtn:active{background:rgba(60,64,67,.12)}
+    .kbd{font-family:var(--mono); font-size:12px; color:var(--muted2)}
+
+    /* ===== Top app bar ===== */
+    header.topbar{
+      height:64px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:0 14px;
+      position:sticky;
+      top:0;
+      z-index:50;
+      background:var(--bg);
+    }
+    .brand{
+      display:flex;align-items:center;gap:10px;
+      min-width: 220px;
+    }
+    .gmailLogo{
+      display:flex;align-items:center;gap:8px;
+      color:var(--text);
+      font-weight:500;
+      letter-spacing:.1px;
+      user-select:none;
+    }
+    .gmailMark{
+      width:34px;height:28px;display:block;
+    }
+
+    .searchWrap{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width: 780px;
+      background:#eaf1fb;
+      border:1px solid #dfe7f3;
+      border-radius:999px;
+      padding:0 10px;
+      height:46px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+    }
+    .searchWrap input{
+      flex:1;
+      border:none;background:transparent;outline:none;
+      font-size:16px;
+      color:var(--text);
+      padding: 10px 2px;
+    }
+    .searchWrap input::placeholder{color:#6f757a}
+    .topRight{
+      display:flex;align-items:center;gap:4px;
+    }
+    .avatar{
+      width:32px;height:32px;border-radius:999px;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;
+      color:#174ea6;
+      background:#d2e3fc;
+      margin-left:6px;
+    }
+
+    /* ===== App layout ===== */
+    .app{
+      display:grid;
+      grid-template-columns: 256px 420px 1fr;
+      gap:12px;
+      padding: 0 12px 12px;
+      height: calc(100vh - 64px);
+    }
+
+    /* ===== Left nav (Gmail sidebar) ===== */
+    aside.sidebar{
+      background:transparent;
+      overflow:auto;
+      padding-right:4px;
+    }
+    .composeBtn{
+      margin: 6px 0 10px;
+      width: 142px;
+      height: 56px;
+      border:none;
+      border-radius: 18px;
+      background: var(--compose);
+      color:#001d35;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      display:flex;align-items:center;gap:12px;
+      padding: 0 18px;
+    }
+    .composeBtn:hover{filter:brightness(.98)}
+    .composeBtn .i{width:22px;height:22px}
+
+    .navGroup{margin-top:8px}
+    .navItem{
+      text-decoration:none;
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      height:32px;
+      padding:0 12px;
+      border-radius:999px;
+      font-size:14px;
+    }
+    .navItem:hover{background:rgba(60,64,67,.08)}
+    .navItem.active{
+      background:var(--selected);
+      font-weight:600;
+    }
+    .navLeft{display:flex; align-items:center; gap:12px; min-width:0}
+    .navLeft span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .navCount{color:var(--muted); font-size:12px}
+    .divider{
+      height:1px;background:rgba(0,0,0,.08);
+      margin: 10px 12px;
+    }
+    .sectionTitle{
+      margin: 12px 12px 6px;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:500;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+
+    /* ===== Middle: list panel ===== */
+    section.list{
+      background:var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+    }
+
+    .listToolbar{
+      height:48px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 10px;
+      border-bottom:1px solid rgba(0,0,0,.08);
+      background:var(--surface);
+    }
+    .listToolbar .left{
+      display:flex;align-items:center;gap:4px;color:var(--muted);
+    }
+    .listToolbar .right{
+      display:flex;align-items:center;gap:4px;color:var(--muted);
+    }
+    .chipFilter{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--chip);
+      color:#174ea6;
+      border:1px solid rgba(26,115,232,.18);
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:500;
+      margin-left:8px;
+    }
+
+    /* Inbox tabs row (Primary / Social / Promotions) */
+    .tabs{
+      display:flex;
+      gap:0;
+      border-bottom:1px solid rgba(0,0,0,.08);
+      background:var(--surface);
+    }
+    .tab{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      height:46px;
+      padding: 0 14px;
+      font-size:13px;
+      color:var(--muted);
+      cursor:pointer;
+      border-bottom:3px solid transparent;
+    }
+    .tab strong{font-weight:600;color:inherit}
+    .tab.active{
+      color:var(--blue);
+      border-bottom-color:var(--blue);
+    }
+    .tab:hover{background:rgba(60,64,67,.04)}
+
+    .threads{overflow:auto}
+    .thread{
+      display:grid;
+      grid-template-columns: 34px 28px 28px 1fr 64px;
+      align-items:center;
+      gap:0;
+      height:44px;
+      padding:0 10px;
+      border-bottom:1px solid rgba(0,0,0,.06);
+      cursor:pointer;
+      font-size:13px;
+    }
+    .thread:hover{background:var(--hover)}
+    .thread.selected{
+      background:var(--selected);
+    }
+    .tcell{min-width:0}
+    .tFrom{
+      font-weight:600;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .tSubject{
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      color:var(--text);
+    }
+    .tSnippet{
+      color:var(--muted);
+      margin-left:6px;
+      font-weight:400;
+    }
+    .tTime{
+      justify-self:end;
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .tMetaLine{
+      display:flex;
+      min-width:0;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .labelPill{
+      display:inline-flex;align-items:center;
+      height:18px;
+      padding:0 8px;
+      border-radius:4px;
+      font-size:11px;
+      font-weight:500;
+      margin-left:10px;
+      color:#174ea6;
+      background:#e8f0fe;
+      border:1px solid rgba(26,115,232,.18);
+      flex:0 0 auto;
+    }
+    .labelPill.good{color:#137333;background:#e6f4ea;border-color:rgba(19,115,51,.18)}
+    .labelPill.warn{color:#b06000;background:#fef7e0;border-color:rgba(176,96,0,.2)}
+    .checkbox{
+      width:16px;height:16px;border-radius:3px;border:2px solid #c4c7c5;
+      background:transparent;
+      justify-self:center;
+    }
+    .star,.imp{
+      color:#c4c7c5;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .star:hover,.imp:hover{color:#5f6368}
+
+    /* ===== Right: reader panel ===== */
+    section.reader{
+      background:var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+    }
+
+    .readerToolbar{
+      height:48px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 10px;
+      border-bottom:1px solid rgba(0,0,0,.08);
+      background:var(--surface);
+      color:var(--muted);
+    }
+    .readerToolbar .left, .readerToolbar .right{display:flex;align-items:center;gap:4px}
+
+    .readerScroll{
+      overflow:auto;
+      padding: 14px 18px 8px;
+      background:var(--surface);
+      flex:1;
+      min-height:0;
+    }
+
+    .subjectRow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+    }
+    h1.subject{
+      margin: 0;
+      font-size:20px;
+      font-weight:500;
+      letter-spacing:.1px;
+      line-height:1.2;
+    }
+    .subjectBadges{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      margin-top:4px;
+    }
+
+    .msgCard{
+      border:1px solid rgba(0,0,0,.12);
+      border-radius: var(--radius);
+      background:#fff;
+      overflow:hidden;
+      margin-top:10px;
+    }
+    .msgTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(0,0,0,.06);
+      gap:12px;
+    }
+    .fromBlock{
+      display:flex;align-items:center;gap:10px;min-width:0;
+    }
+    .fromAvatar{
+      width:36px;height:36px;border-radius:999px;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;
+      color:#174ea6;
+      background:#d2e3fc;
+      flex:0 0 auto;
+    }
+    .fromMeta{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+    .fromName{
+      font-weight:600;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .fromLine{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .msgActions{
+      display:flex;align-items:center;gap:2px;color:var(--muted);
+      flex:0 0 auto;
+    }
+
+    .msgBody{
+      padding: 14px;
+      font-size:13.5px;
+      line-height:1.6;
+      color:var(--text);
+    }
+
+    .callout{
+      margin-top:12px;
+      border:1px solid rgba(26,115,232,.18);
+      background:#f8fbff;
+      border-radius: 12px;
+      padding:12px;
+    }
+    .callout h3{
+      margin:0 0 8px 0;
+      font-size:12px;
+      font-weight:600;
+      color:#174ea6;
+      letter-spacing:.2px;
+    }
+    .kv{
+      display:grid;
+      grid-template-columns: 150px 1fr;
+      gap:6px 12px;
+      font-size:13px;
+    }
+    .kv .k{color:var(--muted)}
+    .mono{font-family:var(--mono)}
+
+    .draftbox{
+      margin-top:12px;
+      border:1px solid rgba(0,0,0,.12);
+      border-radius: 12px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .draftHd{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(0,0,0,.08);
+      background:#f1f3f4;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .draftbox pre{
+      margin:0;
+      padding:12px;
+      white-space:pre-wrap;
+      font-size:13px;
+      line-height:1.55;
+      font-family:var(--sans);
+    }
+
+    .replyBar{
+      border-top:1px solid rgba(0,0,0,.08);
+      padding: 10px 12px;
+      background:#fff;
+    }
+    .replyShell{
+      border:1px solid rgba(0,0,0,.12);
+      border-radius: 18px;
+      padding:10px 12px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:#fff;
+    }
+    .replyShell textarea{
+      flex:1;
+      border:none;
+      outline:none;
+      resize:none;
+      font-family:var(--sans);
+      font-size:13px;
+      line-height:1.4;
+      min-height:24px;
+      max-height:120px;
+      background:transparent;
+    }
+    .sendBtn{
+      background:var(--blue);
+      color:#fff;
+      border:none;
+      border-radius:999px;
+      height:34px;
+      padding:0 14px;
+      font-weight:600;
+      cursor:pointer;
+    }
+    .sendBtn:hover{filter:brightness(.98)}
+    .ghostBtn{
+      border:none;
+      background:transparent;
+      color:var(--muted);
+      font-weight:600;
+      cursor:pointer;
+      height:34px;
+      padding:0 10px;
+      border-radius:999px;
+    }
+    .ghostBtn:hover{background:rgba(60,64,67,.08)}
+
+    /* ===== Responsive ===== */
+    @media (max-width: 1180px){
+      .app{grid-template-columns: 240px 380px 1fr;}
+      .brand{min-width:200px}
+    }
+    @media (max-width: 980px){
+      .app{grid-template-columns: 1fr; height:auto}
+      aside.sidebar{display:none}
+      section.list{border-radius: 0}
+      section.reader{border-radius: 0}
+      header.topbar{position:relative}
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ===== Icons (inline symbol sprite) ===== -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8L20 21.5 21.5 20l-6-6zM10 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></symbol>
+  <symbol id="i-tune" viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zm0-12v2h10V5H3zm10 16v-2h8v2h-8zM7 9v2h14V9H7zm6 8v-2h-2v2h2zm-2-10h2V5h-2v2zm6 10h2v-2h-2v2z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><path d="M11 18h2v-2h-2v2zm1-16C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm0-14c-2.2 0-4 1.8-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.8-3 5h2c0-2.2 3-2.5 3-5 0-2.2-1.8-4-4-4z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.5-2-3.5-2.3.7a7.9 7.9 0 0 0-1.7-1l-.3-2.4h-4l-.3 2.4a7.9 7.9 0 0 0-1.7 1L4.6 6 2.6 9.5 4.6 11a7.7 7.7 0 0 0 0 2l-2 1.5 2 3.5 2.3-.7c.5.4 1.1.8 1.7 1l.3 2.4h4l.3-2.4c.6-.2 1.2-.6 1.7-1l2.3.7 2-3.5-2-1.5zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z"/></symbol>
+  <symbol id="i-apps" viewBox="0 0 24 24"><path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M3 17.2V21h3.8L17.8 10l-3.8-3.8L3 17.2zM20.7 7.1c.4-.4.4-1 0-1.4L18.3 3.3c-.4-.4-1-.4-1.4 0l-1.8 1.8 3.8 3.8 1.8-1.8z"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M19 3H4.99C3.88 3 3 3.9 3 5v14c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-3c-.5 1.5-2 3-4 3s-3.5-1.5-4-3H5V5h14v10z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 17.3l-6.2 3.7 1.7-7.1L2 9.2l7.2-.6L12 2l2.8 6.6 7.2.6-5.5 4.7 1.7 7.1z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></symbol>
+  <symbol id="i-draft" viewBox="0 0 24 24"><path d="M21 8V7l-3 2-2-1-2 1-2-1-2 1-2-1-2 1-2-1-3 2v1l11 6 11-6zM3 10v11h18V10l-9 5-9-5z"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><path d="M20.5 5l-1.4-1.4C18.7 3.2 18.1 3 17.5 3h-11c-.6 0-1.2.2-1.6.6L3.5 5c-.3.3-.5.8-.5 1.2V20c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.2c0-.4-.2-.9-.5-1.2zM12 18l-4-4h3V10h2v4h3l-4 4zM5 7V5h14v2H5z"/></symbol>
+  <symbol id="i-snooze" viewBox="0 0 24 24"><path d="M7.9 3.5L6.5 2.1 2.1 6.5 3.5 7.9 7.9 3.5zM16.1 3.5l4.4 4.4 1.4-1.4-4.4-4.4-1.4 1.4zM12 8c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6-2.7-6-6-6zm1 6.4l2.5 1.5-.7 1.2L11 15V10h2v4.4zM4 22h16v-2H4v2z"/></symbol>
+  <symbol id="i-reply" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></symbol>
+  <symbol id="i-forward" viewBox="0 0 24 24"><path d="M12 8V4l8 8-8 8v-4c-5 0-8.5 1.6-11 5.1C2 16 5 11 12 8z"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <button class="iconBtn" aria-label="Menu"><svg class="i"><use href="#i-menu"/></svg></button>
+
+    <div class="gmailLogo" aria-label="Gmail">
+      <!-- simple Gmail-ish mark -->
+      <svg class="gmailMark" viewBox="0 0 48 40" aria-hidden="true">
+        <path d="M6 34V10l18 14L42 10v24" fill="none" stroke="#EA4335" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6 10l18 14L42 10" fill="none" stroke="#4285F4" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/>
+      </svg>
+      <span style="font-size:18px">Gmail</span>
+    </div>
+  </div>
+
+  <div class="searchWrap" role="search">
+    <button class="iconBtn" aria-label="Search"><svg class="i"><use href="#i-search"/></svg></button>
+    <input placeholder="Search mail" />
+    <button class="iconBtn" aria-label="Show search options"><svg class="i"><use href="#i-tune"/></svg></button>
+  </div>
+
+  <div class="topRight">
+    <button class="iconBtn" aria-label="Help"><svg class="i"><use href="#i-help"/></svg></button>
+    <button class="iconBtn" aria-label="Settings"><svg class="i"><use href="#i-settings"/></svg></button>
+    <button class="iconBtn" aria-label="Google apps"><svg class="i"><use href="#i-apps"/></svg></button>
+    <div class="avatar" title="Account">AI</div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <button class="composeBtn">
+      <svg class="i"><use href="#i-edit"/></svg>
+      Compose
+    </button>
+
+    <div class="navGroup">
+      <a class="navItem active" href="#">
+        <div class="navLeft">
+          <svg class="i" style="color:var(--muted)"><use href="#i-inbox"/></svg>
+          <span>Inbox</span>
+        </div>
+        <span class="navCount">18</span>
+      </a>
+      <a class="navItem" href="#">
+        <div class="navLeft">
+          <svg class="i" style="color:var(--muted)"><use href="#i-star"/></svg>
+          <span>Starred</span>
+        </div>
+        <span class="navCount">2</span>
+      </a>
+      <a class="navItem" href="#">
+        <div class="navLeft">
+          <svg class="i" style="color:var(--muted)"><use href="#i-send"/></svg>
+          <span>Sent</span>
+        </div>
+        <span class="navCount">7</span>
+      </a>
+      <a class="navItem" href="#">
+        <div class="navLeft">
+          <svg class="i" style="color:var(--muted)"><use href="#i-draft"/></svg>
+          <span>Drafts</span>
+        </div>
+        <span class="navCount">3</span>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sectionTitle">
+      <span>Labels</span>
+      <span class="kbd">NEA</span>
+    </div>
+    <div class="navGroup">
+      <a class="navItem" href="#"><div class="navLeft"><span>Outreach Suggestions</span></div><span class="navCount">4</span></a>
+      <a class="navItem" href="#"><div class="navLeft"><span>Meeting Follow-ups</span></div><span class="navCount">2</span></a>
+      <a class="navItem" href="#"><div class="navLeft"><span>News Alerts</span></div><span class="navCount">6</span></a>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sectionTitle"><span>Accounts</span></div>
+    <div class="navGroup">
+      <a class="navItem" href="#"><div class="navLeft"><span>me@nea.com</span></div></a>
+      <a class="navItem" href="#"><div class="navLeft"><span class="mono">outreach_agent@nea.com</span></div></a>
+    </div>
+  </aside>
+
+  <!-- ===== Thread list ===== -->
+  <section class="list">
+    <div class="listToolbar">
+      <div class="left">
+        <button class="iconBtn" aria-label="Select"><span class="checkbox" aria-hidden="true"></span></button>
+        <button class="iconBtn" aria-label="Refresh"><span style="font-size:16px">↻</span></button>
+        <span class="chipFilter"><svg class="i" style="width:18px;height:18px"><use href="#i-tune"/></svg> Filter: Outreach Suggestions</span>
+      </div>
+      <div class="right">
+        <span class="kbd">1–50 of 1,934</span>
+        <button class="iconBtn" aria-label="Previous">‹</button>
+        <button class="iconBtn" aria-label="Next">›</button>
+      </div>
+    </div>
+
+    <div class="tabs" aria-label="Inbox categories">
+      <div class="tab active"><strong>Primary</strong></div>
+      <div class="tab"><strong>Social</strong></div>
+      <div class="tab"><strong>Promotions</strong></div>
+    </div>
+
+    <div class="threads">
+      <!-- Thread 1 (selected) -->
+      <div class="thread selected" data-thread="t1">
+        <div class="tcell"><span class="checkbox"></span></div>
+        <div class="tcell star"><svg class="i"><use href="#i-star"/></svg></div>
+        <div class="tcell imp"><svg class="i"><use href="#i-inbox"/></svg></div>
+
+        <div class="tcell">
+          <div class="tMetaLine">
+            <div class="tFrom">outreach_agent@nea.com</div>
+            <div class="tSubject" style="margin-left:14px;">
+              [Outreach Suggested] Atlas Robotics → Alex Chen
+              <span class="tSnippet">— Why now: CTO hire + your prior meeting follow-up. Draft included…</span>
+              <span class="labelPill good">Suggested</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tTime">9:12 AM</div>
+      </div>
+
+      <!-- Thread 2 -->
+      <div class="thread" data-thread="t2">
+        <div class="tcell"><span class="checkbox"></span></div>
+        <div class="tcell star"><svg class="i"><use href="#i-star"/></svg></div>
+        <div class="tcell imp"><svg class="i"><use href="#i-inbox"/></svg></div>
+
+        <div class="tcell">
+          <div class="tMetaLine">
+            <div class="tFrom">outreach_agent@nea.com</div>
+            <div class="tSubject" style="margin-left:14px;">
+              [Outreach Suggested] Lattice Compute → Priya Nair
+              <span class="tSnippet">— Why now: funding signals + 2nd-degree NEA connection surfaced…</span>
+              <span class="labelPill good">Suggested</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tTime">Yesterday</div>
+      </div>
+
+      <!-- Thread 3 -->
+      <div class="thread" data-thread="t3">
+        <div class="tcell"><span class="checkbox"></span></div>
+        <div class="tcell star"><svg class="i"><use href="#i-star"/></svg></div>
+        <div class="tcell imp"><svg class="i"><use href="#i-inbox"/></svg></div>
+
+        <div class="tcell">
+          <div class="tMetaLine">
+            <div class="tFrom">outreach_agent@nea.com</div>
+            <div class="tSubject" style="margin-left:14px;">
+              [Deferred] Helio Health → Maya Singh (revisit in 30 days)
+              <span class="tSnippet">— Status: deferred. Reason: “too early” last touch; set reminder…</span>
+              <span class="labelPill warn">Deferred</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tTime">Mon</div>
+      </div>
+
+      <!-- Sent divider imitation -->
+      <div style="padding:10px 14px; color:var(--muted); font-size:12px; font-weight:500; background:#fff;">
+        Sent
+      </div>
+
+      <div class="thread" data-thread="s1">
+        <div class="tcell"><span class="checkbox"></span></div>
+        <div class="tcell star"><svg class="i"><use href="#i-star"/></svg></div>
+        <div class="tcell imp"><svg class="i"><use href="#i-send"/></svg></div>
+
+        <div class="tcell">
+          <div class="tMetaLine">
+            <div class="tFrom">me@nea.com</div>
+            <div class="tSubject" style="margin-left:14px;">
+              Re: Quick catch-up — Atlas Robotics
+              <span class="tSnippet">— Sent to Alex Chen. Outcome: meeting scheduled for next week…</span>
+              <span class="labelPill">Sent</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tTime">Yesterday</div>
+      </div>
+
+      <div class="thread" data-thread="s2">
+        <div class="tcell"><span class="checkbox"></span></div>
+        <div class="tcell star"><svg class="i"><use href="#i-star"/></svg></div>
+        <div class="tcell imp"><svg class="i"><use href="#i-send"/></svg></div>
+
+        <div class="tcell">
+          <div class="tMetaLine">
+            <div class="tFrom">me@nea.com</div>
+            <div class="tSubject" style="margin-left:14px;">
+              Intro — Lattice Compute
+              <span class="tSnippet">— Sent to Priya Nair. Using “timing-sensitive” variant from agent…</span>
+              <span class="labelPill">Sent</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tTime">Fri</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Reader ===== -->
+  <section class="reader" aria-label="Message reader">
+    <div class="readerToolbar">
+      <div class="left">
+        <button class="iconBtn" aria-label="Archive"><svg class="i"><use href="#i-archive"/></svg></button>
+        <button class="iconBtn" aria-label="Snooze"><svg class="i"><use href="#i-snooze"/></svg></button>
+        <button class="iconBtn" aria-label="Delete"><span style="font-size:18px;color:var(--danger)">🗑</span></button>
+      </div>
+      <div class="right">
+        <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+        <button class="iconBtn" aria-label="Forward"><svg class="i"><use href="#i-forward"/></svg></button>
+      </div>
+    </div>
+
+    <div class="readerScroll">
+      <div class="subjectRow">
+        <div>
+          <h1 class="subject" id="subjectLine">[Outreach Suggested] Atlas Robotics → Alex Chen</h1>
+          <div class="subjectBadges">
+            <span class="labelPill good">Suggested • Short-term</span>
+            <span class="labelPill">Outreach Suggestions</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="conversation">
+        <!-- Message 1: Agent suggestion -->
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">OA</div>
+              <div class="fromMeta">
+                <div class="fromName">outreach_agent@nea.com</div>
+                <div class="fromLine">to me • <span class="mono">9:12 AM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            <div class="callout">
+              <h3>Why this is in your inbox</h3>
+              <div class="kv">
+                <div class="k">Trigger</div><div>CTO hired from Amazon Robotics <span style="color:var(--muted)">(2d ago)</span></div>
+                <div class="k">Your last touch</div><div>Meeting (Nov 18) → “follow-up requested”</div>
+                <div class="k">Priority</div><div><b>Short-term</b> (recommended outreach in next 3–5 days)</div>
+                <div class="k">Suggested intent</div><div>Follow-up → schedule 20 min catch-up</div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <h3>Who to email</h3>
+              <div class="kv">
+                <div class="k">Recipient</div><div><b>Alex Chen</b>, CEO — Atlas Robotics</div>
+                <div class="k">Email</div><div class="mono">alex@atlasrobotics.ai</div>
+                <div class="k">Bio</div><div>Former Amazon Robotics PM → built automation teams; now founder/CEO at Atlas</div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <h3>Relationship context (Swarm)</h3>
+              <div class="kv">
+                <div class="k">Direct NEA edge</div><div>J. Doe (Partner) met Alex at Automation Summit (2025)</div>
+                <div class="k">Second-degree</div><div>Flexport portfolio CEO overlaps in operator network</div>
+                <div class="k">Recommendation</div><div>Use <b>one</b> warm reference max; keep email under ~90 words</div>
+              </div>
+            </div>
+
+            <div class="draftbox">
+              <div class="draftHd">
+                <span>Suggested draft (Direct, medium formality)</span>
+                <span class="labelPill">Edit by replying</span>
+              </div>
+              <pre id="draftText">Subject: Quick catch-up?
+
+Hi Alex —
+
+Noticed the CTO hire and hiring momentum since we last spoke. Would love to reconnect for 20 minutes to hear how priorities have shifted and what you’re optimizing for next.
+
+Best,
+Me</pre>
+            </div>
+
+            <div style="margin-top:10px; color:var(--muted); font-size:12px;">
+              Reply with edits (tone / length / warm reference) and I’ll revise the draft. When ready, copy/paste into a new email from your inbox and send manually.
+            </div>
+          </div>
+        </div>
+
+        <!-- Message 2: Investor reply with edits -->
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">ME</div>
+              <div class="fromMeta">
+                <div class="fromName">me@nea.com</div>
+                <div class="fromLine">to outreach_agent@nea.com • <span class="mono">9:18 AM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            Can you make this <b>shorter</b> and slightly warmer, but avoid “hope you’re well.” Also mention we’ve been tracking warehouse automation more broadly (1 line) and keep the ask to 20 minutes.
+          </div>
+        </div>
+
+        <!-- Message 3: Agent revision -->
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">OA</div>
+              <div class="fromMeta">
+                <div class="fromName">outreach_agent@nea.com</div>
+                <div class="fromLine">to me • <span class="mono">9:21 AM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            Updated draft per your notes: shorter, warmer, no “hope you’re well,” includes one-line context.
+
+            <div class="draftbox">
+              <div class="draftHd">
+                <span>Revised draft (Warm, concise)</span>
+                <span class="labelPill good">Ready to copy</span>
+              </div>
+              <pre>Subject: Quick catch-up?
+
+Hi Alex —
+
+We’ve been spending time on warehouse automation recently and noticed Atlas’s momentum (including the new CTO). Open to a quick 20 minutes to reconnect and hear what you’re prioritizing next?
+
+Best,
+Me</pre>
+            </div>
+
+            <div style="margin-top:10px; color:var(--muted); font-size:12px;">
+              If you’d like, I can also produce a “warm reference” version referencing J. Doe or Flexport (one reference max).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reply bar -->
+    <div class="replyBar">
+      <div class="replyShell">
+        <button class="ghostBtn" type="button">Reply</button>
+        <textarea placeholder="Type reply to outreach_agent@nea.com… (e.g., ‘Make it more formal’, ‘Add warm reference to J. Doe’, ‘Remove mention of CTO’, etc.)"></textarea>
+        <button class="sendBtn" type="button">Send</button>
+      </div>
+      <div style="margin-top:6px; color:var(--muted); font-size:12px; padding:0 6px;">
+        Drafts are revised by replying to the agent. Final send is manual from your inbox.
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Minimal interactive mock: click threads to swap content in reader
+  const threads = {
+    t1: {
+      title: "[Outreach Suggested] Atlas Robotics → Alex Chen",
+      convo: document.getElementById("conversation").innerHTML,
+    },
+    t2: {
+      title: "[Outreach Suggested] Lattice Compute → Priya Nair",
+      convo: `
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">OA</div>
+              <div class="fromMeta">
+                <div class="fromName">outreach_agent@nea.com</div>
+                <div class="fromLine">to me • <span class="mono">Yesterday 4:02 PM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            <div class="callout">
+              <h3>Why this is in your inbox</h3>
+              <div class="kv">
+                <div class="k">Trigger</div><div>Rumored raise in progress <span style="color:var(--muted)">(1d)</span></div>
+                <div class="k">Secondary</div><div>Eng lead joined from NVIDIA <span style="color:var(--muted)">(4d)</span></div>
+                <div class="k">Priority</div><div><b>Short-term</b> (timing-sensitive)</div>
+                <div class="k">Suggested intent</div><div>First outreach → intro + compare notes</div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <h3>Who to email</h3>
+              <div class="kv">
+                <div class="k">Recipient</div><div><b>Priya Nair</b>, Founder — Lattice Compute</div>
+                <div class="k">Email</div><div class="mono">priya@latticecompute.com</div>
+                <div class="k">Bio</div><div>Former NVIDIA; building inference optimization platform for enterprise AI workloads</div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <h3>Relationship context (Swarm)</h3>
+              <div class="kv">
+                <div class="k">Second-degree</div><div>S. Patel (Principal) worked with Priya previously</div>
+                <div class="k">Recommendation</div><div>Use <b>one</b> line referencing Patel if appropriate; keep it direct</div>
+              </div>
+            </div>
+
+            <div class="draftbox">
+              <div class="draftHd"><span>Suggested draft (Timing-sensitive)</span><span class="labelPill">Edit by replying</span></div>
+              <pre>Subject: Quick intro
+
+Hi Priya —
+
+We’ve been tracking Lattice’s work in inference optimization and noticed signals you may be considering a round. If you’re open to it, I’d love to compare notes and hear what you’re prioritizing this quarter.
+
+Best,
+Me</pre>
+            </div>
+
+            <div style="margin-top:10px; color:var(--muted); font-size:12px;">
+              Reply with edits and I’ll revise the draft. Manual send from your inbox only.
+            </div>
+          </div>
+        </div>
+
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">ME</div>
+              <div class="fromMeta">
+                <div class="fromName">me@nea.com</div>
+                <div class="fromLine">to outreach_agent@nea.com • <span class="mono">Yesterday 4:08 PM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            Add one soft reference to Patel (“we’ve worked with others in your network like S. Patel”) but keep it subtle and keep it under 85 words.
+          </div>
+        </div>
+
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">OA</div>
+              <div class="fromMeta">
+                <div class="fromName">outreach_agent@nea.com</div>
+                <div class="fromLine">to me • <span class="mono">Yesterday 4:11 PM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            Revised draft (subtle warm reference, <b>82 words</b>):
+
+            <div class="draftbox">
+              <div class="draftHd"><span>Revised draft (Ready to copy)</span><span class="labelPill good">Ready</span></div>
+              <pre>Subject: Quick intro
+
+Hi Priya —
+
+We’ve been tracking Lattice’s work in inference optimization and noticed you may be considering a round. We’ve worked with others in your network (incl. S. Patel) and would love to compare notes. Open to a quick 20 minutes this week to hear what you’re prioritizing?
+
+Best,
+Me</pre>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    t3: {
+      title: "[Deferred] Helio Health → Maya Singh (revisit in 30 days)",
+      convo: `
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">OA</div>
+              <div class="fromMeta">
+                <div class="fromName">outreach_agent@nea.com</div>
+                <div class="fromLine">to me • <span class="mono">Mon 8:03 AM</span></div>
+              </div>
+            </div>
+            <div class="msgActions">
+              <button class="iconBtn" aria-label="Star"><svg class="i"><use href="#i-star"/></svg></button>
+              <button class="iconBtn" aria-label="Reply"><svg class="i"><use href="#i-reply"/></svg></button>
+            </div>
+          </div>
+          <div class="msgBody">
+            <div class="callout">
+              <h3>Status</h3>
+              <div class="kv">
+                <div class="k">Current</div><div><b>Deferred</b> (reconsider in 30 days)</div>
+                <div class="k">Last touch</div><div>Aug meeting → “revisit in Q1”</div>
+                <div class="k">New signals</div><div>Dashboard v2 + first GTM hire posted</div>
+              </div>
+            </div>
+
+            <div class="callout">
+              <h3>Who to email</h3>
+              <div class="kv">
+                <div class="k">Recipient</div><div><b>Maya Singh</b>, Founder — Helio Health</div>
+                <div class="k">Email</div><div class="mono">maya@heliohealth.com</div>
+                <div class="k">Bio</div><div>Building remote monitoring + diagnostics for chronic care</div>
+              </div>
+            </div>
+
+            <div class="draftbox">
+              <div class="draftHd"><span>Optional re-engagement draft (if you want)</span><span class="labelPill warn">Deferred</span></div>
+              <pre>Subject: Checking in
+
+Hi Maya —
+
+We last chatted in August and agreed it was a bit early. I saw the dashboard update and the GTM hire — seems like things are moving. Would it be helpful to reconnect for 20 minutes to hear what’s changed?
+
+Best,
+Me</pre>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    s1: {
+      title: "Re: Quick catch-up — Atlas Robotics",
+      convo: `
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">ME</div>
+              <div class="fromMeta">
+                <div class="fromName">me@nea.com</div>
+                <div class="fromLine">to <span class="mono">alex@atlasrobotics.ai</span> • <span class="mono">Yesterday 9:34 AM</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="msgBody">
+            <b>Subject:</b> Quick catch-up?<br/><br/>
+            Hi Alex —<br/><br/>
+            We’ve been spending time on warehouse automation recently and noticed Atlas’s momentum (including the new CTO). Open to a quick 20 minutes to reconnect and hear what you’re prioritizing next?<br/><br/>
+            Best,<br/>
+            Me
+          </div>
+        </div>
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">AC</div>
+              <div class="fromMeta">
+                <div class="fromName"><span class="mono">alex@atlasrobotics.ai</span></div>
+                <div class="fromLine">to me • <span class="mono">Yesterday 10:02 AM</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="msgBody">
+            Yes — happy to. I can do Tue 2pm PT or Wed 11am PT. Want to send a calendar invite?
+          </div>
+        </div>
+      `
+    },
+    s2: {
+      title: "Intro — Lattice Compute",
+      convo: `
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">ME</div>
+              <div class="fromMeta">
+                <div class="fromName">me@nea.com</div>
+                <div class="fromLine">to <span class="mono">priya@latticecompute.com</span> • <span class="mono">Fri 3:40 PM</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="msgBody">
+            <b>Subject:</b> Quick intro<br/><br/>
+            Hi Priya —<br/><br/>
+            We’ve been tracking Lattice’s work in inference optimization and noticed you may be considering a round. We’ve worked with others in your network (incl. S. Patel) and would love to compare notes. Open to a quick 20 minutes this week to hear what you’re prioritizing?<br/><br/>
+            Best,<br/>
+            Me
+          </div>
+        </div>
+        <div class="msgCard">
+          <div class="msgTop">
+            <div class="fromBlock">
+              <div class="fromAvatar">PN</div>
+              <div class="fromMeta">
+                <div class="fromName"><span class="mono">priya@latticecompute.com</span></div>
+                <div class="fromLine">to me • <span class="mono">Fri 4:12 PM</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="msgBody">
+            Thanks — happy to connect. Monday afternoon works. Also looping in my cofounder.
+          </div>
+        </div>
+      `
+    }
+  };
+
+  const subjectLine = document.getElementById("subjectLine");
+  const convoEl = document.getElementById("conversation");
+
+  document.querySelectorAll(".thread").forEach(t => {
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".thread").forEach(x => x.classList.remove("selected"));
+      t.classList.add("selected");
+      const id = t.dataset.thread;
+      subjectLine.textContent = threads[id].title;
+      convoEl.innerHTML = threads[id].convo;
+      // scroll reader to top
+      document.querySelector(".readerScroll").scrollTop = 0;
+    });
+  });
+
+  // Auto-grow textarea (small Gmail-like behavior)
+  const ta = document.querySelector(".replyShell textarea");
+  if (ta){
+    const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(120, ta.scrollHeight) + "px"; };
+    ta.addEventListener("input", grow);
+    grow();
+  }
+</script>
+
+</body>
+</html>
